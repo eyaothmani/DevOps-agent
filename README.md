@@ -29,7 +29,6 @@ When a CloudWatch alarm fires, the agent collects the logs around the incident a
 - [Testing and quality](#testing-and-quality)
 - [CI/CD](#cicd)
 - [Chaos engineering](#chaos-engineering)
-- [Roadmap](#roadmap)
 - [Author](#author)
 
 ---
