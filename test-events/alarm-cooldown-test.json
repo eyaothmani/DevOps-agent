@@ -1,0 +1,18 @@
+{
+  "Records": [
+    {
+      "EventSource": "aws:sns",
+      "EventVersion": "1.0",
+      "Sns": {
+        "Type": "Notification",
+        "MessageId": "test-cooldown-2",
+        "TopicArn": "arn:aws:sns:eu-north-1:014498640042:eya-devops-alerts",
+        "Subject": "ALARM: \"eya-asg-cpu-high\" in EU (Stockholm)",
+        "Message": "{\"AlarmName\":\"eya-asg-cpu-high\",\"AlarmDescription\":\"CPU utilization sustained above 80 percent for 5 minutes on ASG instance. Sustained high load pattern, no crash or error detected in application logs, service still responding normally to health checks. No recent deployment or configuration change identified as root cause.\",\"NewStateValue\":\"ALARM\",\"OldStateValue\":\"OK\",\"NewStateReason\":\"Threshold Crossed: 1 out of the last 1 datapoints [94.6 (19/08/26 10:00:00)] was greater than the threshold (80.0) (minimum 1 datapoint for ALARM -> OK transition).\",\"Region\":\"EU (Stockholm)\",\"Trigger\":{\"MetricName\":\"CPUUtilization\",\"Namespace\":\"AWS/EC2\",\"Threshold\":80.0,\"Dimensions\":[{\"name\":\"InstanceId\",\"value\":\"i-00e42fe0fcda43765\"}]}}",
+        "Timestamp": "2026-08-19T10:00:00.000Z",
+        "SignatureVersion": "1",
+        "MessageAttributes": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowSSMDescribeAndList",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeInstanceInformation",
+                "ssm:ListCommands",
+                "ssm:ListCommandInvocations"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AllowSSMSendCommandOnASGInstances",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:SendCommand"
+            ],
+            "Resource": [
+                "arn:aws:ec2:eu-north-1:014498640042:instance/*",
+                "arn:aws:ssm:eu-north-1::document/AWS-RunShellScript"
+            ]
+        },
+        {
+            "Sid": "AllowSSMGetCommandInvocation",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetCommandInvocation"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SSMDescribeParametersGlobal",
+            "Effect": "Allow",
+            "Action": "ssm:DescribeParameters",
+            "Resource": "*"
+        },
+        {
+            "Sid": "SSMKillSwitchParameter",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters",
+                "ssm:PutParameter",
+                "ssm:DeleteParameter",
+                "ssm:AddTagsToResource",
+                "ssm:ListTagsForResource"
+            ],
+            "Resource": "arn:aws:ssm:eu-north-1:014498640042:parameter/agent-devops/kill_switch"
+        },
+        {
+            "Sid": "DynamoDBDescribeBackupsAgentActionLocks",
+            "Effect": "Allow",
+            "Action": "dynamodb:DescribeContinuousBackups",
+            "Resource": "arn:aws:dynamodb:eu-north-1:014498640042:table/agent_action_locks"
+        }
+    ]
+}

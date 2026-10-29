@@ -1,0 +1,61 @@
+name: Scheduled Destroy (FinOps)
+
+on:
+  schedule:
+    - cron: "0 15 * * *"   # chaque soir à   16 Tunisie
+  workflow_dispatch: {}     # déclenchement manuel toujours disponible en complément
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-north-1
+
+jobs:
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    # Le destroy planifié ne tourne que si l'environnement AWS est activé
+    # (variable de repo ENABLE_AWS_DEPLOY = 'true').
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.ENABLE_AWS_DEPLOY == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Lambda build dependencies
+        run: pip install -r requirements-lambda.txt
+
+      - name: Build Lambda package
+        run: python3 build_lambda_package.py
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform Destroy
+        id: destroy
+        working-directory: infra
+        run: terraform destroy -input=false -auto-approve
+        env:
+          TF_VAR_SLACK_WEBHOOK_URL: ${{ secrets.TF_VAR_SLACK_WEBHOOK_URL }}
+          TF_VAR_SLACK_SIGNING_SECRET: ${{ secrets.TF_VAR_SLACK_SIGNING_SECRET }}
+          TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_BUDGET_ALERT_EMAIL }}

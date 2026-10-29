@@ -1,0 +1,66 @@
+name: Terraform Import (one-off)
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_address:
+        description: "Adresse Terraform (ex: aws_secretsmanager_secret.rds_master)"
+        required: true
+      resource_id:
+        description: "ID AWS réel (ARN complet pour Secrets Manager, nom pour d'autres ressources)"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-north-1
+
+jobs:
+  import:
+    name: Terraform Import
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Lambda build dependencies
+        run: pip install -r requirements-lambda.txt
+
+      - name: Build Lambda package
+        run: python3 build_lambda_package.py
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform Import
+        working-directory: infra
+        run: terraform import "${{ inputs.resource_address }}" "${{ inputs.resource_id }}"
+        env:
+          TF_VAR_SLACK_WEBHOOK_URL: ${{ secrets.TF_VAR_SLACK_WEBHOOK_URL }}
+          TF_VAR_SLACK_SIGNING_SECRET: ${{ secrets.TF_VAR_SLACK_SIGNING_SECRET }}
+          TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_BUDGET_ALERT_EMAIL }}

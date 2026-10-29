@@ -1,0 +1,3 @@
+[tool.ruff.lint.per-file-ignores]
+"evaluation/api_metrics.py" = ["B008"]
+"evaluation/api/dependencies.py" = ["B008"]

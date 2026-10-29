@@ -1,0 +1,243 @@
+name: CD
+
+on:
+  # Déclenchement automatique après un CI réussi sur main
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+  # Déclenchement manuel
+  workflow_dispatch:
+
+  # Apply automatique chaque matin à 08:00 en Tunisie
+  # GitHub Actions utilise UTC → 07:00 UTC = 08:00 Tunisie
+  schedule:
+    - cron: "0 7 * * *"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-north-1
+  ECR_REPOSITORY: agent-devops-dashboard-api
+
+jobs:
+
+  # ────────────────────────────────────────────────────────────
+  # US 6.2 — Build, Scan Trivy, Push ECR
+  # ────────────────────────────────────────────────────────────
+
+  build-and-push:
+    name: Build & Scan & Push (US 6.2)
+    runs-on: ubuntu-latest
+
+    # Exécution :
+    # - manuellement (workflow_dispatch)
+    # - automatiquement (CI réussi / schedule) uniquement si la variable
+    #   de repo ENABLE_AWS_DEPLOY vaut 'true' — sinon le job est ignoré
+    #   (repo de démonstration sans compte AWS configuré).
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (vars.ENABLE_AWS_DEPLOY == 'true' && (
+          github.event_name == 'schedule' ||
+          github.event.workflow_run.conclusion == 'success'
+        ))
+      }}
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+
+      # ────────────────────────────────────────────────────────
+      # Checkout
+      # ────────────────────────────────────────────────────────
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # ────────────────────────────────────────────────────────
+      # AWS OIDC
+      # ────────────────────────────────────────────────────────
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ────────────────────────────────────────────────────────
+      # ECR Login
+      # ────────────────────────────────────────────────────────
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ────────────────────────────────────────────────────────
+      # Image tag
+      # ────────────────────────────────────────────────────────
+
+      - name: Set image tag
+        id: meta
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "tag=${SHA::12}" >> "$GITHUB_OUTPUT"
+
+      # ────────────────────────────────────────────────────────
+      # Docker Buildx
+      # ────────────────────────────────────────────────────────
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ────────────────────────────────────────────────────────
+      # Build image
+      # ────────────────────────────────────────────────────────
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.tag }}"
+          push: false
+          load: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ────────────────────────────────────────────────────────
+      # Trivy Security Scan
+      # ────────────────────────────────────────────────────────
+
+      - name: Scan image with Trivy (gate)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.tag }}"
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+          trivyignores: ".trivyignore"
+
+      # ────────────────────────────────────────────────────────
+      # Push image to ECR
+      # ────────────────────────────────────────────────────────
+
+      - name: Push image
+        run: |
+          docker push "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.tag }}"
+
+  # ────────────────────────────────────────────────────────────
+  # US 6.3 — Terraform Apply
+  # ────────────────────────────────────────────────────────────
+
+  deploy-infra:
+    name: Terraform Apply (US 6.3)
+    runs-on: ubuntu-latest
+
+    needs: [build-and-push]
+
+    environment: production
+
+    steps:
+
+      # ────────────────────────────────────────────────────────
+      # Checkout
+      # ────────────────────────────────────────────────────────
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # ────────────────────────────────────────────────────────
+      # AWS OIDC
+      # ────────────────────────────────────────────────────────
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ────────────────────────────────────────────────────────
+      # Python
+      # ────────────────────────────────────────────────────────
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ────────────────────────────────────────────────────────
+      # Lambda dependencies
+      # ────────────────────────────────────────────────────────
+
+      - name: Install Lambda build dependencies
+        run: |
+          pip install -r requirements-lambda.txt
+
+      # ────────────────────────────────────────────────────────
+      # Lambda package
+      # ────────────────────────────────────────────────────────
+
+      - name: Build Lambda package
+        run: |
+          python3 build_lambda_package.py
+
+      # ────────────────────────────────────────────────────────
+      # Terraform
+      # ────────────────────────────────────────────────────────
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      # ────────────────────────────────────────────────────────
+      # Terraform Init
+      # ────────────────────────────────────────────────────────
+
+      - name: Terraform Init
+        working-directory: infra
+        run: |
+          terraform init -input=false
+
+      # ────────────────────────────────────────────────────────
+      # Terraform Plan
+      # ────────────────────────────────────────────────────────
+
+      - name: Terraform Plan
+        working-directory: infra
+        run: |
+          terraform plan \
+            -input=false \
+            -out=tfplan
+        env:
+          TF_VAR_SLACK_WEBHOOK_URL: ${{ secrets.TF_VAR_SLACK_WEBHOOK_URL }}
+          TF_VAR_SLACK_SIGNING_SECRET: ${{ secrets.TF_VAR_SLACK_SIGNING_SECRET }}
+          TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_BUDGET_ALERT_EMAIL }}
+
+      # ────────────────────────────────────────────────────────
+      # Terraform Apply
+      # ────────────────────────────────────────────────────────
+      # Désactivé : stage terminé, apply non nécessaire pour le moment
+
+      # - name: Terraform Apply
+      #   working-directory: infra
+      #   run: |
+      #     terraform apply \
+      #       -input=false \
+      #       -auto-approve \
+      #       tfplan

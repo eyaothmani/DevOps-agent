@@ -1,0 +1,157 @@
+name: E2E Integration Test
+
+on:
+  workflow_dispatch: {}
+  # schedule:
+  #   - cron: "0 8 * * 1"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-north-1
+
+jobs:
+  e2e:
+    name: Chaos E2E — CPU High (US 6.5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Install Lambda build dependencies
+        run: pip install -r requirements-lambda.txt
+
+      - name: Build Lambda package
+        run: python3 build_lambda_package.py
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      # ── NOUVEAU : détecte immédiatement un secret vide/mal formé,
+      # AVANT de déployer quoi que ce soit. Évite de propager une
+      # mauvaise valeur silencieusement comme ça vient d'arriver.
+      - name: Vérifier le format du secret Slack webhook
+        run: |
+          URL="${{ secrets.TF_VAR_SLACK_WEBHOOK_URL }}"
+          if [ -z "$URL" ]; then
+            echo "::error::TF_VAR_SLACK_WEBHOOK_URL est vide."
+            exit 1
+          fi
+          if [[ "$URL" != https://hooks.slack.com/services/* ]]; then
+            echo "::error::TF_VAR_SLACK_WEBHOOK_URL n'est pas un Incoming Webhook Slack valide (attendu: https://hooks.slack.com/services/...). Valeur actuelle host: $(echo "$URL" | sed -E 's#https?://([^/]+).*#\1#')"
+            exit 1
+          fi
+          echo "✅ Format du webhook Slack valide."
+
+      - name: Terraform Plan
+        working-directory: infra
+        run: terraform plan -input=false -out=tfplan
+        env:
+          TF_VAR_SLACK_WEBHOOK_URL: ${{ secrets.TF_VAR_SLACK_WEBHOOK_URL }}
+          TF_VAR_SLACK_SIGNING_SECRET: ${{ secrets.TF_VAR_SLACK_SIGNING_SECRET }}
+          TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_BUDGET_ALERT_EMAIL }}
+
+      - name: Terraform Apply
+        working-directory: infra
+        run: terraform apply -input=false -auto-approve tfplan
+
+      # ── NOUVEAU : preuve que le webhook répond vraiment,
+      # au lieu de le découvrir 45 minutes plus tard via le scénario chaos.
+      - name: Vérifier que le webhook Slack répond
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"text":"[CI] Vérification webhook — E2E Integration Test"}' \
+            "${{ secrets.TF_VAR_SLACK_WEBHOOK_URL }}")
+          echo "Code HTTP retourné par Slack : $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Le webhook Slack ne répond pas 200 (reçu $STATUS). Vérifie qu'il n'a pas été révoqué côté Slack."
+            exit 1
+          fi
+          echo "✅ Webhook Slack opérationnel."
+
+      - name: Run chaos scenario (CPU High)
+        run: python -m chaos.cpu_high --duration 300 --alarm-timeout 480
+
+      - name: Upload scenario results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-e2e-results
+          path: chaos/results/cpu_high_results.csv
+          retention-days: 14
+
+      # ── DURCI : ne se contente plus de "alarme déclenchée + incident_id
+      # présent" — vérifie le vrai statut de décision, pour ne pas valider
+      # un run où Slack (ou toute autre étape) a échoué silencieusement.
+      - name: Check E2E result
+        run: |
+          python3 - <<'EOF'
+          import csv, sys
+
+          path = "chaos/results/cpu_high_results.csv"
+          with open(path, newline="", encoding="utf-8") as f:
+              rows = list(csv.DictReader(f))
+
+          if not rows:
+              print("::error::Aucun résultat trouvé dans le CSV.")
+              sys.exit(1)
+
+          last = rows[-1]
+          print(f"Résultat scénario : {last}")
+
+          if last.get("triggered") != "True":
+              print("::error::L'alarme CloudWatch ne s'est pas déclenchée.")
+              sys.exit(1)
+
+          if not last.get("incident_id"):
+              print("::error::Alarme déclenchée mais aucun incident trouvé dans agent_decisions.")
+              sys.exit(1)
+
+          status = last.get("decision_status", "")
+          failed_statuses = {
+              "LOCK_ACQUISITION_FAILED",
+              "REMEDIATION_UNAVAILABLE",
+          }
+          if status in failed_statuses:
+              print(f"::error::Décision en échec technique : {status}")
+              sys.exit(1)
+
+          print(f"E2E test réussi : alarme déclenchée, incident traité (status={status}).")
+          EOF
+
+      # ⚠️ TOUJOURS DÉSACTIVÉ — voir note ci-dessous, à traiter séparément.
+      # - name: Terraform Destroy
+      #   if: always()
+      #   working-directory: infra
+      #   run: terraform destroy -input=false -auto-approve
+      #   env:
+      #     TF_VAR_SLACK_WEBHOOK_URL: ${{ secrets.TF_VAR_SLACK_WEBHOOK_URL }}
+      #     TF_VAR_SLACK_SIGNING_SECRET: ${{ secrets.TF_VAR_SLACK_SIGNING_SECRET }}
+      #     TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_BUDGET_ALERT_EMAIL }}

@@ -1,0 +1,218 @@
+[
+  {
+    "incident_id": "demo-cpu-executed-01",
+    "node_name": "Diagnostic",
+    "node_timestamp": "Diagnostic#1786005979000000001000",
+    "timestamp": 1786005979,
+    "expires_at": 1793781979,
+    "alarm_type": "CPUHigh",
+    "confidence": 62,
+    "groundedness_score": 1,
+    "tokens_used": 6725,
+    "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "rca_diagnosis": "Pic de CPU a 100% cause par des taches systeme de maintenance (apt-news, esm-cache, packagekit) lancees automatiquement, dans la fenetre d'agregation CloudWatch. Scale-out preventif recommande."
+  },
+  {
+    "incident_id": "demo-cpu-executed-01",
+    "node_name": "Judge",
+    "node_timestamp": "Judge#1786005981000000001000",
+    "timestamp": 1786005981,
+    "expires_at": 1793781981,
+    "judge_verdict": "coherent",
+    "judge_justification": "Le diagnostic s'appuie correctement sur les logs : les services systemd identifies demarrent bien dans la fenetre d'agregation CloudWatch qui a mesure le depassement de seuil."
+  },
+  {
+    "incident_id": "demo-cpu-executed-01",
+    "node_name": "Decision",
+    "node_timestamp": "Decision#1786005981000000001000",
+    "timestamp": 1786005981,
+    "expires_at": 1793781981,
+    "decision_status": "AWAITING_HUMAN_VALIDATION",
+    "proposed_action": "ScaleOut",
+    "confidence": 62
+  },
+  {
+    "incident_id": "demo-cpu-executed-01",
+    "node_name": "Decision",
+    "node_timestamp": "Decision#1786006094000000002000",
+    "timestamp": 1786006094,
+    "expires_at": 1793782094,
+    "decision_status": "EXECUTED",
+    "action": "ScaleOut",
+    "confidence": 62,
+    "human_validated_at": "2026-08-06T08:53:51+00:00",
+    "human_validator": "othmanieya00",
+    "ssm_command_id": "fecba3ea-f096-4529-9f3c-20ce93830fc6",
+    "refusal_reason": null,
+    "resolution_time_seconds": 2.28
+  },
+  {
+    "incident_id": "demo-cpu-executed-01",
+    "node_name": "Communication",
+    "node_timestamp": "Communication#1786006095000000001000",
+    "timestamp": 1786006095,
+    "expires_at": 1793782095,
+    "alarm_type": "CPUHigh",
+    "communication_status": "SENT"
+  },
+  {
+    "incident_id": "demo-servicedown-executed-08h",
+    "node_name": "Diagnostic",
+    "node_timestamp": "Diagnostic#1786003924000000001000",
+    "timestamp": 1786003924,
+    "expires_at": 1793779924,
+    "alarm_type": "ServiceDown",
+    "confidence": 91,
+    "groundedness_score": 0.93,
+    "tokens_used": 5310,
+    "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "rca_diagnosis": "Le service applicatif principal ne repond plus depuis 08:10. Le healthcheck ALB echoue sur les 2 instances de l'ASG. Redemarrage du service recommande."
+  },
+  {
+    "incident_id": "demo-servicedown-executed-08h",
+    "node_name": "Judge",
+    "node_timestamp": "Judge#1786003926000000001000",
+    "timestamp": 1786003926,
+    "expires_at": 1793779926,
+    "judge_verdict": "coherent",
+    "judge_justification": "L'echec du healthcheck ALB sur les deux instances corrobore l'hypothese d'un service arrete plutot que d'un probleme reseau isole."
+  },
+  {
+    "incident_id": "demo-servicedown-executed-08h",
+    "node_name": "Decision",
+    "node_timestamp": "Decision#1786003927000000001000",
+    "timestamp": 1786003927,
+    "expires_at": 1793779927,
+    "decision_status": "EXECUTED",
+    "action": "RestartService",
+    "confidence": 91,
+    "ssm_command_id": "a11ce002-19aa-4b13-9a2e-7e0a2c9d5f10",
+    "resolution_time_seconds": 3.4
+  },
+  {
+    "incident_id": "demo-servicedown-executed-08h",
+    "node_name": "Communication",
+    "node_timestamp": "Communication#1786003929000000001000",
+    "timestamp": 1786003929,
+    "expires_at": 1793779929,
+    "alarm_type": "ServiceDown",
+    "communication_status": "SENT"
+  },
+  {
+    "incident_id": "demo-servicedown-executed-16h",
+    "node_name": "Diagnostic",
+    "node_timestamp": "Diagnostic#1786032221000000001000",
+    "timestamp": 1786032221,
+    "expires_at": 1793808221,
+    "alarm_type": "ServiceDown",
+    "confidence": 88,
+    "groundedness_score": 0.89,
+    "tokens_used": 5488,
+    "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "rca_diagnosis": "Service arrete suite a un redemarrage de l'instance apres le cycle de redeploiement automatique (pipeline CI/CD, US 6.3). Redemarrage du service recommande pour retablir la disponibilite."
+  },
+  {
+    "incident_id": "demo-servicedown-executed-16h",
+    "node_name": "Judge",
+    "node_timestamp": "Judge#1786032223000000001000",
+    "timestamp": 1786032223,
+    "expires_at": 1793808223,
+    "judge_verdict": "coherent",
+    "judge_justification": "La correlation temporelle avec le job de redeploiement planifie est explicite dans les logs et suffit a expliquer l'arret du service."
+  },
+  {
+    "incident_id": "demo-servicedown-executed-16h",
+    "node_name": "Decision",
+    "node_timestamp": "Decision#1786032224000000001000",
+    "timestamp": 1786032224,
+    "expires_at": 1793808224,
+    "decision_status": "EXECUTED",
+    "action": "RestartService",
+    "confidence": 88,
+    "ssm_command_id": "b22df113-2abb-4c24-8b3f-8f1b3d0e6a21",
+    "resolution_time_seconds": 2.9
+  },
+  {
+    "incident_id": "demo-servicedown-executed-16h",
+    "node_name": "Communication",
+    "node_timestamp": "Communication#1786032226000000001000",
+    "timestamp": 1786032226,
+    "expires_at": 1793808226,
+    "alarm_type": "ServiceDown",
+    "communication_status": "SENT"
+  },
+  {
+    "incident_id": "demo-cpu-whitelist-refused",
+    "node_name": "Diagnostic",
+    "node_timestamp": "Diagnostic#1786011727000000001000",
+    "timestamp": 1786011727,
+    "expires_at": 1793787727,
+    "alarm_type": "CPUHigh",
+    "confidence": 71,
+    "groundedness_score": 0.74,
+    "tokens_used": 5902,
+    "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "rca_diagnosis": "CPU sature par un processus applicatif non identifie precisement dans les logs disponibles. Une action de type 'KillProcess' est proposee mais ne figure pas dans la liste blanche autorisee."
+  },
+  {
+    "incident_id": "demo-cpu-whitelist-refused",
+    "node_name": "Judge",
+    "node_timestamp": "Judge#1786011729000000001000",
+    "timestamp": 1786011729,
+    "expires_at": 1793787729,
+    "judge_verdict": "incertain",
+    "judge_justification": "Le processus incrimine n'est pas nomme explicitement dans les logs fournis, la conclusion reste plausible mais non totalement etayee."
+  },
+  {
+    "incident_id": "demo-cpu-whitelist-refused",
+    "node_name": "Decision",
+    "node_timestamp": "Decision#1786011730000000001000",
+    "timestamp": 1786011730,
+    "expires_at": 1793787730,
+    "decision_status": "REFUSED_BY_WHITELIST",
+    "proposed_action": "KillProcess",
+    "confidence": 71,
+    "refusal_reason": "Action 'KillProcess' absente de la whitelist autorisee (US 3.1)."
+  },
+  {
+    "incident_id": "demo-cpu-whitelist-refused",
+    "node_name": "Communication",
+    "node_timestamp": "Communication#1786011731000000001000",
+    "timestamp": 1786011731,
+    "expires_at": 1793787731,
+    "alarm_type": "CPUHigh",
+    "communication_status": "SENT"
+  },
+  {
+    "incident_id": "demo-cpu-duplicate-skipped",
+    "node_name": "Diagnostic",
+    "node_timestamp": "Diagnostic#1786011890000000001000",
+    "timestamp": 1786011890,
+    "expires_at": 1793787890,
+    "alarm_type": "CPUHigh",
+    "confidence": 69,
+    "groundedness_score": 0.71,
+    "tokens_used": 5760,
+    "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "rca_diagnosis": "Nouvelle alerte CPU sur la meme instance que l'incident precedent, dans la fenetre de verrouillage anti-doublon."
+  },
+  {
+    "incident_id": "demo-cpu-duplicate-skipped",
+    "node_name": "Decision",
+    "node_timestamp": "Decision#1786011892000000001000",
+    "timestamp": 1786011892,
+    "expires_at": 1793787892,
+    "decision_status": "DUPLICATE_ACTION_SKIPPED",
+    "confidence": 69,
+    "refusal_reason": "Action deja recemment tentee sur cette ressource : verrou d'idempotence actif (US 4.4)."
+  },
+  {
+    "incident_id": "demo-cpu-duplicate-skipped",
+    "node_name": "Communication",
+    "node_timestamp": "Communication#1786011893000000001000",
+    "timestamp": 1786011893,
+    "expires_at": 1793787893,
+    "alarm_type": "CPUHigh",
+    "communication_status": "SENT"
+  }
+]

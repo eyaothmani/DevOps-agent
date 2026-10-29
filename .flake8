@@ -1,0 +1,4 @@
+[flake8]
+max-line-length = 88
+exclude = agent/package,.venv,__pycache__
+extend-ignore = E501

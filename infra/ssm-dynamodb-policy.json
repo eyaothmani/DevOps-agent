@@ -1,0 +1,46 @@
+{
+"Version": "2012-10-17",
+"Statement": [
+{
+"Sid": "TerraformSSMDocumentManagement",
+"Effect": "Allow",
+"Action": [
+"ssm:CreateDocument",
+"ssm:UpdateDocument",
+"ssm:UpdateDocumentDefaultVersion",
+"ssm:DeleteDocument",
+"ssm:DescribeDocument",
+"ssm:GetDocument",
+"ssm:ListDocumentVersions",
+"ssm:AddTagsToResource",
+"ssm:RemoveTagsFromResource"
+],
+"Resource": "arn:aws:ssm:eu-north-1:014498640042:document/Custom-*"
+},
+{
+"Sid": "SSMDescribeParametersGlobal",
+"Effect": "Allow",
+"Action": "ssm:DescribeParameters",
+"Resource": "*"
+},
+{
+"Sid": "SSMKillSwitchParameter",
+"Effect": "Allow",
+"Action": [
+"ssm:GetParameter",
+"ssm:GetParameters",
+"ssm:PutParameter",
+"ssm:DeleteParameter",
+"ssm:AddTagsToResource",
+"ssm:ListTagsForResource"
+],
+"Resource": "arn:aws:ssm:eu-north-1:014498640042:parameter/agent-devops/kill_switch"
+},
+{
+"Sid": "DynamoDBDescribeBackupsAgentActionLocks",
+"Effect": "Allow",
+"Action": "dynamodb:DescribeContinuousBackups",
+"Resource": "arn:aws:dynamodb:eu-north-1:014498640042:table/agent_action_locks"
+}
+]
+}

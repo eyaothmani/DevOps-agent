@@ -1,0 +1,75 @@
+# ───────────────────────── Python ─────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# ───────────────────── Tests & quality ────────────────────
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+bandit-report.json
+output.txt
+tests/output.txt
+tests/**/validation_results.json
+tests/validation_results.json
+filelist.txt
+
+# ───────────────── Lambda packaging / build ───────────────
+agent/package/
+agent_deploy/
+build/
+layer/python/
+package/
+*.zip
+*.tar
+*.tar.gz
+
+# ──────────────────────── Terraform ───────────────────────
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.plan
+tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfvars
+*.auto.tfvars
+infra/tf_apply_log.txt
+infra/deployed_check/
+# The provider lock file is committed for infra/ and infra/bootstrap/ only
+/.terraform.lock.hcl
+
+# ───────────── Secrets & local configuration ──────────────
+.env
+.env.*
+!.env.example
+setup_vars.ps1
+env.json
+env-vars.json
+
+# ─────────── Local debug outputs (Lambda invokes…) ─────────
+/response*.json
+/expr_values.json
+/policy.json
+*.log
+
+# ───────────────────── Local scripts ──────────────────────
+scripts/
+/force_executed_test.py
+/real_test_kill_switch.py
+
+# ─────────────────────────── IDE ──────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
