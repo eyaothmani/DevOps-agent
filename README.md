@@ -280,13 +280,6 @@ python -m chaos.run_campaign --scenario high_error_rate --runs 12 --rate 0.3
 
 Each run is logged to CSV for MTTR and success-rate analysis.
 
-## Roadmap
-
-- [ ] More alarm types and remediations, such as RDS storage and memory pressure
-- [ ] Retrieval over past incidents (RAG on the audit trail) to improve the RCA
-- [ ] Multi-account support through cross-account roles
-- [ ] Replace the incoming webhook with a full Slack app (threads, `/agent` commands)
-
 ## Author
 
 **Eya Othmani**, engineering student (AI / GenAI, MLOps / LLMOps)
